@@ -38,10 +38,11 @@ jobs:
           name: android-aab
           path: app/build/outputs/bundle/release/*.aab
 
-  deploy-android:
-    name: Deploy to Play Store
-    needs: build-android
-    runs-on: ubuntu-latest
+deploy-android:
+  name: Deploy to Play Store
+  needs: build-android
+  runs-on: ubuntu-latest
+  if: false
 
     steps:
       - name: Download AAB
