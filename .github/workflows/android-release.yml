@@ -23,6 +23,35 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Restore Keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android.keystore
+          ls -la android.keystore
+
+      - name: Create local.properties
+        run: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          cat local.properties
+
+      - name: Create gradle.properties signing values
+        run: |
+          cat >> gradle.properties <<EOF
+          android.suppressUnsupportedCompileSdk=36
+          MYAPP_UPLOAD_STORE_FILE=../android.keystore
+          MYAPP_UPLOAD_STORE_PASSWORD=${{ secrets.ANDROID_STORE_PASSWORD }}
+          MYAPP_UPLOAD_KEY_ALIAS=ims-key
+          MYAPP_UPLOAD_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+          cat gradle.properties
+
       - name: Grant execute permission
         run: chmod +x gradlew
 
@@ -37,12 +66,13 @@ jobs:
         with:
           name: android-aab
           path: app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
 
-deploy-android:
-  name: Deploy to Play Store
-  needs: build-android
-  runs-on: ubuntu-latest
-  if: false
+  deploy-android:
+    name: Deploy to Play Store
+    needs: build-android
+    runs-on: ubuntu-latest
+    if: false
 
     steps:
       - name: Download AAB
@@ -53,7 +83,9 @@ deploy-android:
 
       - name: Write Play Store key
         run: |
-          echo '${{ secrets.PLAY_STORE_JSON_KEY }}' > play-store-key.json
+          cat <<'EOF' > play-store-key.json
+          ${{ secrets.PLAY_STORE_JSON_KEY }}
+          EOF
 
       - name: Install Fastlane
         run: sudo gem install fastlane
